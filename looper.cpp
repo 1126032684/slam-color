@@ -44,7 +44,7 @@ cv::Mat FT(Mat &src){
 		}
 	}
 	
-	cout<<max_v<<" "<<min_v<<endl;
+	//cout<<max_v<<" "<<min_v<<endl;
 	int X,Y;
     for (Y = 0; Y < row; Y++)
     {
@@ -115,28 +115,65 @@ double ComEntropy(Mat img1, Mat img2, double img1_entropy, double img2_entropy) 
   result = img1_entropy + img2_entropy - result; 
   return result;
 }
+double Sort(double *a, int low, int high)
+{ 
+  int pivot = a[low]; 
+  if(low < high) 
+  {
+    while(a[high] >= pivot && low < high) 
+      high --; 
+    a[low++] = a[high];
+    while(a[low] <= pivot && low <high) 
+      low ++;
+    a[high--] = a[low];
+  }
+  a[low] = pivot; 
+  return low;
+}
+double QuickSort_K_MAX(double *a, int low, int high, int k) 
+{
+  if(low >= high) 
+    return a[low]; 
+  else 
+  {
+    int mid = Sort(a,low,high); 
+    if(mid > k) 
+      QuickSort_K_MAX(a,low,mid-1,k); 
+    else if(mid < k) 
+      QuickSort_K_MAX(a,mid+1,high,k); 
+    else 
+      return a[mid]; 
+  }
+}
 vector<RGBDFrame::Ptr> Looper::getPossibleLoops( const RGBDFrame::Ptr& frame )
 {
-    vector<RGBDFrame::Ptr>  result;
-    vector<double> H_values;
+ /*   vector<RGBDFrame::Ptr>  result;
+    //vector<double> H_values;
+    double H_values[100001];
+    int t=0;
     Mat Src_ft=FT(frame->rgb);
     double Src_entry=Entropy(Src_ft);
-    int th=frames.size()*0.4;
+    double th=0;
     for ( size_t i=0; i<frames.size(); i++ )
     {
         RGBDFrame::Ptr pf = frames[i];
 	Mat loop_ft=FT(pf->rgb);
 	double loop_entry=Entropy(loop_ft);
 	double H_entry=ComEntropy(Src_ft,loop_ft,Src_entry,loop_entry);
-	H_values.push_back(H_entry);
+// 	if(H_entry>th)
+// 	{
+// 	  th=H_entry;
+// 	}
+	H_values[t++]=H_entry;
        /* double  score = vocab.score( frame->bowVec, pf->bowVec );
         if (score > min_sim_score && abs(pf->id-frame->id)>min_interval )
         {
             result.push_back( pf );
         }
-        */
+        
     }
-    sort(H_values.begin(),H_values.end());
+    th=QuickSort_K_MAX(H_values, 0,t,frames.size()-frames.size()*0.6);
+  //  sort(H_values.begin(),H_values.end());
     for ( size_t i=0; i<frames.size(); i++ )
     {
         RGBDFrame::Ptr pf = frames[i];
@@ -145,10 +182,42 @@ vector<RGBDFrame::Ptr> Looper::getPossibleLoops( const RGBDFrame::Ptr& frame )
 	double H_entry=ComEntropy(Src_ft,loop_ft,Src_entry,loop_entry);
 	//H_values.push_back(H_entry);
         double  score = vocab.score( frame->bowVec, pf->bowVec );
-        if (score > min_sim_score && abs(pf->id-frame->id)>min_interval&&H_entry>H_values[th] )
+        if (score > min_sim_score && abs(pf->id-frame->id)>min_interval&&H_entry>th )
         {
             result.push_back( pf );
         }
     }
-    return result;
+    */
+    Mat Src_ft=FT(frame->rgb);
+    double Src_entry=Entropy(Src_ft);
+    double th=0;
+    double H_values[100001];
+    int t=0;
+    vector<RGBDFrame::Ptr>  result,end_result;
+    for ( size_t i=0; i<frames.size(); i++ )
+    {
+        RGBDFrame::Ptr pf = frames[i];
+        double  score = vocab.score( frame->bowVec, pf->bowVec );
+        if (score > min_sim_score && abs(pf->id-frame->id)>min_interval )
+        {
+            result.push_back( pf );
+	    Mat loop_ft=FT(pf->rgb);
+	    double loop_entry=Entropy(loop_ft);
+	    double H_entry=ComEntropy(Src_ft,loop_ft,Src_entry,loop_entry);
+	    H_values[t++]=H_entry;
+        }
+    }
+    th=QuickSort_K_MAX(H_values, 0,t,result.size()-result.size()*0.6);
+    for(size_t i=0;i<result.size();i++)
+    {
+         RGBDFrame::Ptr pf = frames[i];
+         Mat loop_ft=FT(pf->rgb);
+	 double loop_entry=Entropy(loop_ft);
+	 double H_entry=ComEntropy(Src_ft,loop_ft,Src_entry,loop_entry);
+	 if(H_entry>th)
+	 {
+	   end_result.push_back(pf);
+	}
+    }
+    return end_result;
 }
